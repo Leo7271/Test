@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-container">
+    <header class="topbar">
+        <div class="brand">
+            <img src="{{ url_for('static', filename='images/martinrea_gray.png') }}" alt="Martinrea logo">
+            <span>MARTINREA MODULES</span>
+        </div>
+        <div class="header-right">
+            <div class="top-info">
+                <span class="datetime" id="current-datetime"></span>
+                <span class="location">Industrial Park Dinatech, 83297, Hermosillo, Sonora, Mexico.</span>
+            </div>
+            <div class="menu-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </header>
+
+    <main class="login-card">
+        <section class="login-form">
+            <img class="avatar" src="{{ url_for('static', filename='images/unknown_user.png') }}" alt="Registration avatar">
+            <h1>Register</h1>
+            <p>Send a request to support to validate your Martinrea account.</p>
+
+            {% if success %}
+                <div class="success-message">{{ success }}</div>
+            {% endif %}
+            {% if error %}
+                <div class="error-message">{{ error }}</div>
+            {% endif %}
+
+            <form action="{{ url_for('register') }}" method="post">
+                <input type="text" name="full_name" placeholder="Full name" autocomplete="name" value="{{ full_name }}">
+                <input type="email" name="email" placeholder="Email address" autocomplete="email" value="{{ email }}">
+                <input type="text" name="username" placeholder="Desired username" autocomplete="username" value="{{ username }}">
+                <textarea name="support_message" rows="4" placeholder="Message to support">{{ support_message }}</textarea>
+                <div class="captcha-row">
+                    <label>{{ captcha_question }}</label>
+                    <input type="text" name="captcha_answer" placeholder="Answer">
+                </div>
+                <div class="support-note">
+                    Your request will be sent to <strong>{{ support_email }}</strong> and processed by <strong>{{ actual_support_email }}</strong>.
+                </div>
+                <div class="button-row">
+                    <button type="submit" class="primary">Submit request</button>
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <footer class="bottom-bar">
+        <a class="footer-button secondary" href="{{ url_for('login') }}">Back to login</a>
+        <span>TEST 2 - BASE CODES, CONNECTION AND LATENCY</span>
+        <button class="footer-button secondary" type="button">Help</button>
+    </footer>
+</div>
+{% endblock %}

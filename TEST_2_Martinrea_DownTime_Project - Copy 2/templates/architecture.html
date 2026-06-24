@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="app-shell">
+    <header class="app-topbar">
+        <div class="app-brand">
+            <img src="{{ url_for('static', filename='images/martinrea_gray.png') }}" alt="Martinrea logo">
+            <div class="app-brand-text">MARTINREA MODULES</div>
+        </div>
+        <div class="app-top-right">
+            <span class="datetime" id="current-datetime"></span>
+            <span class="location">Industrial Park Dinatech, 83297, Hermosillo, Sonora, Mexico.</span>
+        </div>
+    </header>
+
+    <div class="app-navbar">
+        <div class="app-title">TEST 2 - BASE CODES, CONNECTION AND LATENCY</div>
+        <div class="tab-list">
+            <a class="tab" href="{{ url_for('dashboard') }}">Main Screen</a>
+            <a class="tab active" href="{{ url_for('architecture') }}">Test Architecture</a>
+            <a class="tab" href="{{ url_for('code_management') }}">Code Management</a>
+            <a class="tab" href="#">History</a>
+            <a class="tab" href="#">Tables</a>
+        </div>
+    </div>
+
+    <div class="app-body">
+        <aside class="side-panel">
+            <div class="side-user-card">
+                <div class="side-avatar-wrap">
+                    <img class="side-avatar" src="{{ url_for('static', filename='images/unknown_user.png') }}" alt="{{ username }}">
+                </div>
+                <div class="side-user-title">{{ username }}</div>
+                <div class="side-description">{{ user_description }}</div>
+            </div>
+
+            <div class="side-block">
+                <div class="side-block-label">Record the Production Line:</div>
+                {% if username == 'Casimiro' %}
+                <form action="{{ url_for('start_simulation') }}" method="post">
+                    <button type="submit" class="side-button">START</button>
+                </form>
+                {% else %}
+                <button class="side-button" disabled title="Only the Raspberry Pi user can start the line">START</button>
+                {% endif %}
+            </div>
+
+            <div class="side-block">
+                <div class="side-block-label">Update the codes to GitHub</div>
+                <form action="{{ url_for('update_github') }}" method="post">
+                    <button type="submit" class="side-button">UPDATE</button>
+                </form>
+            </div>
+
+            <div class="side-actions">
+                <form action="{{ url_for('logout') }}" method="get">
+                    <button type="submit" class="side-button secondary">LOG OUT</button>
+                </form>
+                <form action="{{ url_for('exit_app') }}" method="post">
+                    <button type="submit" class="side-button secondary">EXIT</button>
+                </form>
+            </div>
+        </aside>
+
+        <main class="content-panel">
+            <section class="screen-header">
+                <span class="screen-tag">Architecture</span>
+                <div class="screen-heading">SYSTEM ARCHITECTURE</div>
+            </section>
+
+            <section class="diagram-card architecture-card">
+                <div class="diagram-board architecture-board">
+                    <img class="diagram-image" src="{{ url_for('static', filename='images/architecture_2.png') }}" alt="Architecture diagram">
+                    <!-- Legend moved above the switch to avoid covering the diagram -->
+                    <div class="legend-left">
+                        <div class="status-note">Última verificación: cargando...</div>
+                        <ul class="conn-list">
+                            {% for key, info in device_info.items() %}
+                            <li class="conn-item">
+                                <span class="conn-dot status-{{ connections.get(key, 'disconnected') }}" aria-hidden="true"></span>
+                                <span class="conn-label">{{ info.label }} <small>({{ info.ip }})</small></span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <!-- Absolute-positioned dots overlay: each device can have a percentage position -->
+                    <div class="dots-overlay">
+                        {% for key, info in device_info.items() %}
+                            {% if positions.get(key) %}
+                                <span class="device-dot status-{{ connections.get(key, 'disconnected') }}" style="left: {{ positions[key]['left'] }}; top: {{ positions[key]['top'] }};" title="{{ info.label }}"></span>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+    <script>
+        // Poll connection statuses and update indicators
+        async function refreshConnections() {
+            try {
+                const res = await fetch('/api/connection');
+                if (!res.ok) return;
+                const data = await res.json();
+                const conns = data.connections || {};
+                const positions = data.positions || {};
+                const lastCheck = data.last_check;
+                const statusNote = document.querySelector('.status-note');
+                const list = document.querySelector('.conn-list');
+                const dots = document.querySelector('.dots-overlay');
+                if (!list || !dots) return;
+
+                if (statusNote) {
+                    statusNote.textContent = lastCheck ? 'Última verificación: ' + lastCheck : 'Última verificación: pendiente';
+                }
+
+                // Rebuild legend
+                list.innerHTML = '';
+                const devices = data.device_info || {};
+                Object.keys(devices).forEach(key => {
+                    const status = conns[key] || 'disconnected';
+                    const info = devices[key] || {};
+                    const label = info.label || key.replace(/_/g, ' ');
+                    const ip = info.ip ? ' (' + info.ip + ')' : '';
+                    const li = document.createElement('li');
+                    li.className = 'conn-item';
+                    const dot = document.createElement('span');
+                    dot.className = 'conn-dot status-' + status;
+                    dot.setAttribute('aria-hidden','true');
+                    const labelSpan = document.createElement('span');
+                    labelSpan.className = 'conn-label';
+                    labelSpan.textContent = label + ip;
+                    li.appendChild(dot);
+                    li.appendChild(labelSpan);
+                    list.appendChild(li);
+                });
+
+                // Rebuild dots overlay
+                dots.innerHTML = '';
+                Object.keys(devices).forEach(key => {
+                    const status = conns[key] || 'disconnected';
+                    const pos = positions[key];
+                    const info = devices[key] || {};
+                    if (pos && pos.left && pos.top) {
+                        const s = document.createElement('span');
+                        s.className = 'device-dot status-' + status;
+                        s.style.left = pos.left;
+                        s.style.top = pos.top;
+                        s.title = info.label || key.replace(/_/g, ' ');
+                        dots.appendChild(s);
+                    }
+                });
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        // initial refresh and interval
+        refreshConnections();
+        setInterval(refreshConnections, 1000);
+    </script>
+{% endblock %}

@@ -1,0 +1,1044 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="app-shell">
+    <header class="app-topbar">
+        <div class="app-brand">
+            <img src="{{ url_for('static', filename='images/martinrea_gray.png') }}" alt="Martinrea logo">
+            <div class="app-brand-text">MARTINREA MODULES</div>
+        </div>
+        <div class="app-top-right">
+            <span class="datetime" id="current-datetime"></span>
+            <span class="location">Industrial Park Dinatech, 83297, Hermosillo, Sonora, Mexico.</span>
+        </div>
+    </header>
+
+    <div class="app-navbar">
+        <div class="app-title">TEST 2 - BASE CODES, CONNECTION AND LATENCY</div>
+        <div class="tab-list">
+            <a class="tab" href="{{ url_for('dashboard') }}">Main Screen</a>
+            <a class="tab" href="{{ url_for('architecture') }}">Test Architecture</a>
+            <a class="tab active" href="{{ url_for('code_management') }}">Code Management</a>
+            <a class="tab" href="#">History</a>
+            <a class="tab" href="#">Tables</a>
+        </div>
+    </div>
+
+    <div class="app-body">
+        <aside class="side-panel">
+            <div class="side-user-card">
+                <div class="side-avatar-wrap">
+                    <img class="side-avatar" src="{{ url_for('static', filename='images/unknown_user.png') }}" alt="{{ username }}">
+                </div>
+                <div class="side-user-title">{{ username }}</div>
+                <div class="side-description">{{ user_description }}</div>
+            </div>
+        </aside>
+
+        <main class="content-panel">
+            <section class="screen-header">
+                <div>
+                    <span class="screen-tag">Code Management</span>
+                    <div class="screen-heading">Master & Slave code assets</div>
+                </div>
+            </section>
+
+            <section class="code-management-card">
+                <div class="status-row">
+                    <div class="status-pill">Masters available: <span id="master-count">0</span></div>
+                    <div class="status-pill">Slaves available: <span id="slave-count">0</span></div>
+                    <div class="status-pill" id="selected-master-pill" style="display:none;">Current master: <span id="selected-master-name"></span></div>
+                </div>
+
+                <div class="content-actions">
+                    <button class="action-pill primary" id="btn-add">Add code +</button>
+                    <button class="action-pill" id="btn-clean">Clean all -</button>
+                    <button class="action-pill" id="btn-global-back">Back to Dashboard</button>
+                </div>
+
+                <section class="section-bar">
+                    <div class="section-title">MASTERS CODES</div>
+                </section>
+                <div id="masters" class="code-list"></div>
+
+                <section id="slaves-section" class="section-bar hidden">
+                    <div class="section-title" id="slaves-title">M1 - SLAVES CODES</div>
+                </section>
+                <div id="slaves" class="code-list"></div>
+
+                <section id="code-view-section" class="section-bar hidden">
+                    <div class="section-title" id="code-body-title">S1 - PYTHON CODE</div>
+                </section>
+                <div id="code-view-panel" class="hidden">
+                    <div class="code-view-controls">
+                        <button class="side-button secondary" id="btn-back-slaves">Back to Slaves</button>
+                        <button class="side-button" id="btn-ai-assist">AI Assist</button>
+                    </div>
+                    <pre id="code-body" class="code-body">Select a slave to view code</pre>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+
+<div id="codeMenu" class="code-menu" style="display:none;">
+    <button class="menu-item" id="menu-edit">Edit Code</button>
+    <button class="menu-item" id="menu-meta">Edit Metadata</button>
+    <button class="menu-item" id="menu-copy">Copy Code</button>
+    <button class="menu-item" id="menu-move">Move Code</button>
+    <button class="menu-item danger" id="menu-delete">Delete Code</button>
+</div>
+
+<div id="addTypeMenu" class="modal hidden">
+    <div class="modal-content add-type-card">
+        <h4>Select code type</h4>
+        <div class="add-type-grid">
+            <button class="action-pill primary" id="add-master-btn">Master code</button>
+            <button class="action-pill" id="add-slave-btn">Slave code</button>
+        </div>
+        <div class="modal-actions">
+            <button id="add-type-cancel" class="secondary">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add modal -->
+<div id="addModal" class="modal hidden">
+    <div class="modal-content">
+        <h4 id="add-modal-title">Create Code</h4>
+        <div class="modal-row">
+            <label>Type</label>
+            <select id="add-kind"><option value="masters">Master</option><option value="slaves">Slave</option></select>
+        </div>
+        <div class="modal-row">
+            <label>Name (file.py)</label>
+            <input id="add-name" type="text" placeholder="example.py" />
+        </div>
+        <div class="modal-row">
+            <label>Objective</label>
+            <input id="add-objective" type="text" placeholder="e.g., Data extraction code" />
+        </div>
+        <div id="add-master-row" class="modal-row optional-field hidden">
+            <label>Attach to master (optional)</label>
+            <select id="add-master-select"></select>
+        </div>
+        <div class="modal-row">
+            <label>IP (only for slave)</label>
+            <input id="add-ip" type="text" />
+        </div>
+        <div class="modal-row modal-grid">
+            <div>
+                <label>Rack</label>
+                <input id="add-rack" type="number" value="0" />
+            </div>
+            <div>
+                <label>Slot</label>
+                <input id="add-slot" type="number" value="0" />
+            </div>
+        </div>
+        <div class="modal-row">
+            <label>Variables</label>
+            <div class="variable-grid" id="add-vars-grid">
+                <div class="variable-row variable-row-header">
+                    <span>Name</span>
+                    <span>Type</span>
+                    <span>Offset</span>
+                    <span></span>
+                </div>
+            </div>
+            <button type="button" class="side-button secondary" id="add-variable-row-add">Add variable</button>
+            <div class="hint-text">Choose type and name; offsets update automatically. Bool/Byte=1, Int/Word=2, DWord/Real=4 bytes.</div>
+        </div>
+        <div class="modal-row">
+            <label>Initial content</label>
+            <textarea id="add-content" rows="6"># New code
+</textarea>
+        </div>
+        <div class="modal-actions">
+            <button id="add-save">Create</button>
+            <button id="add-cancel">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Master Details Modal -->
+<div id="masterDetailsModal" class="modal hidden">
+    <div class="modal-content">
+        <h4>Master Code Configuration</h4>
+        <div class="master-details-panel">
+            <div class="detail-row">
+                <label>Name and type of code:</label>
+                <div id="detail-name" class="detail-value"></div>
+            </div>
+            <div class="detail-row">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <label>Objective:</label>
+                    <button class="side-button secondary" id="edit-objective-btn" style="padding:6px 12px;font-size:0.85rem;">Edit</button>
+                </div>
+                <div id="detail-objective" class="detail-value"></div>
+            </div>
+        </div>
+        
+        <div class="section-divider"></div>
+        
+        <h5>Slave codes (optional)</h5>
+        <div id="detail-slaves-list" class="slaves-list-compact"></div>
+        <button class="side-button secondary" id="detail-add-slave">+ Add slave codes</button>
+        
+        <div class="modal-actions">
+            <button id="detail-close" class="secondary">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit metadata modal -->
+<div id="editModal" class="modal hidden">
+    <div class="modal-content">
+        <h4>Edit Code Metadata</h4>
+        <div class="modal-row">
+            <label>Objective:</label>
+            <input id="meta-objective" type="text" />
+        </div>
+        <div class="modal-row">
+            <label>IP Selection:</label>
+            <input id="meta-ip" type="text" />
+        </div>
+        <div class="modal-row modal-grid">
+            <div>
+                <label>Rack</label>
+                <input id="meta-rack" type="number" />
+            </div>
+            <div>
+                <label>Slot</label>
+                <input id="meta-slot" type="number" />
+            </div>
+        </div>
+        <div class="modal-row">
+            <label>Variables</label>
+            <div class="variable-grid" id="meta-vars-grid">
+                <div class="variable-row variable-row-header">
+                    <span>Name</span>
+                    <span>Type</span>
+                    <span>Offset</span>
+                    <span></span>
+                </div>
+            </div>
+            <button type="button" class="side-button secondary" id="meta-variable-row-add">Add variable</button>
+            <div class="hint-text">Variables are saved as metadata and can be reused across slave files.</div>
+        </div>
+        <div class="modal-actions">
+            <button id="meta-save">Save</button>
+            <button id="meta-cancel">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Master Objective Modal -->
+<div id="editObjectiveModal" class="modal hidden">
+    <div class="modal-content" style="max-width:600px;">
+        <h4>Edit Objective</h4>
+        <div class="modal-row">
+            <label>Enter the objective:</label>
+            <input id="edit-objective-input" type="text" placeholder="e.g., Data extraction code" />
+        </div>
+        <div class="modal-actions">
+            <button id="edit-objective-save">Save</button>
+            <button id="edit-objective-cancel" class="secondary">Cancel</button>
+        </div>
+    </div>
+</div>
+<div id="contentModal" class="modal hidden">
+    <div class="modal-content content-large">
+        <h4 id="contentTitle">Edit Code</h4>
+        <textarea id="contentEditor" rows="18" class="code-editor"># loading...</textarea>
+        <div class="modal-actions">
+            <button id="content-save">Save</button>
+            <button id="content-cancel">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.hidden{display:none !important;}
+.code-list{display:flex;flex-wrap:wrap;gap:20px;padding:14px 0;}
+.code-card{position:relative;width:160px;min-height:200px;background:rgba(255,255,255,0.08);border-radius:22px;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;color:#fff;cursor:pointer;border:1px solid rgba(255,255,255,.12);box-shadow:0 18px 40px rgba(0,0,0,.12);transition:transform .18s ease,box-shadow .18s ease;}
+.code-card:hover{transform:translateY(-3px);box-shadow:0 24px 52px rgba(0,0,0,.18);}
+.code-card .code-icon{width:96px;height:96px;object-fit:contain;margin-bottom:14px;}
+.code-card .code-name{margin-top:0.25rem;font-size:.95rem;font-weight:600;color:#fff;line-height:1.2;word-break:break-word;}
+.card-menu-trigger{position:absolute;top:12px;right:12px;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.14);display:grid;place-items:center;color:#fff;font-weight:700;cursor:pointer;}
+.code-menu{position:absolute;z-index:1200;min-width:180px;background:#152f58;border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:10px;box-shadow:0 20px 50px rgba(0,0,0,.25);}
+.menu-item{display:block;width:100%;text-align:left;padding:10px 12px;border:none;background:none;color:#eef4ff;font-weight:600;border-radius:12px;cursor:pointer;transition:background .16s ease;}
+.menu-item:hover{background:rgba(255,255,255,.08);}
+.menu-item.danger{color:#ff7e8d;}
+.code-view-controls{display:flex;justify-content:flex-start;gap:12px;margin-bottom:12px;}
+.content-actions{display:flex;flex-wrap:wrap;gap:14px;margin:20px 0;}
+.content-actions .action-pill{flex:1 1 180px;padding:14px 18px;border-radius:18px;border:none;background:rgba(255,255,255,0.1);color:#eef4ff;font-weight:700;letter-spacing:0.08em;cursor:pointer;transition:transform .22s cubic-bezier(0.34, 1.56, 0.64, 1),background .2s ease;}
+.content-actions .action-pill:hover{transform:translateY(-2px);background:rgba(255,255,255,0.16);}
+.content-actions .action-pill.primary{background:#1f5aa7;box-shadow:0 16px 30px rgba(23,88,159,0.22);}
+.content-actions .action-pill.primary:hover{background:#1a4d8f;}
+.code-management-card{width:100%;max-width:none;background:rgba(7,24,49,0.95);border-radius:34px;border:1px solid rgba(255,255,255,0.08);padding:26px;box-shadow:0 32px 100px rgba(0,0,0,0.25);min-height:calc(100vh - 240px);}
+.add-type-card{max-width:520px;min-width:320px;background:rgba(10,18,30,0.92);color:#eef5ff;border:1px solid rgba(255,255,255,0.12);}
+.add-type-card h4{color:#eef5ff;margin-bottom:12px;}
+.add-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0;}
+.add-type-grid .action-pill{background:rgba(255,255,255,0.1);color:#eef5ff;border:1px solid rgba(255,255,255,0.12);}
+.add-type-grid .action-pill.primary{background:#1f5aa7;}
+.variable-grid{display:grid;gap:10px;margin-top:12px;}
+.variable-row{display:grid;grid-template-columns:1.5fr 1fr 1fr 0.7fr;gap:10px;align-items:center;}
+.variable-row span{color:#eef5ff;font-size:0.92rem;font-weight:600;}
+.variable-row-header{padding:10px 10px 0 0;border-bottom:1px solid rgba(255,255,255,0.12);color:#b8c7da;}
+.variable-row input, .variable-row select{width:100%;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.08);color:#eef5ff;}
+.variable-row button{padding:10px 12px;border-radius:14px;border:none;background:rgba(255,255,255,0.08);color:#eef5ff;cursor:pointer;}
+.hint-text{margin-top:10px;color:#c7d6e2;font-size:0.85rem;opacity:0.9;}
+.app-body{align-items:stretch;}
+.section-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 0 8px;border-bottom:1px solid rgba(255,255,255,0.1);margin-top:24px;}
+.section-title{font-size:0.95rem;font-weight:700;color:#eef5ff;letter-spacing:0.12em;text-transform:uppercase;}
+.code-body{background:#071b36;color:#91f07f;padding:18px;border-radius:22px;min-height:260px;overflow:auto;font-family:Consolas, Monaco, 'Courier New', monospace;font-size:0.92rem;line-height:1.5;border:1px solid rgba(255,255,255,.12);}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.52);display:flex;justify-content:center;align-items:center;z-index:1100;}
+.modal-content{width:min(820px,92%);max-height:92vh;overflow:auto;background:rgba(80,95,115,0.92);box-shadow:0 20px 60px rgba(0,0,0,.4);border-radius:26px;padding:26px;color:#eef5ff;border:1px solid rgba(255,255,255,0.12);}
+.modal-content h4{color:#ffffff;margin-bottom:16px;}
+.modal-content h5{color:#eef5ff;margin-bottom:12px;}
+.modal-row{margin-bottom:16px;}
+.modal-row label{display:block;margin-bottom:10px;font-weight:700;color:#d4e0f0;font-size:0.95rem;}
+.modal-row input,.modal-row select,.modal-row textarea{width:100%;padding:14px 16px;border:1px solid rgba(255,255,255,0.16);border-radius:18px;font-family:inherit;font-size:1rem;background:rgba(255,255,255,0.08);color:#eef5ff;}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.modal-actions{display:flex;justify-content:flex-end;gap:14px;margin-top:18px;}
+.modal-actions button{padding:12px 18px;border:none;border-radius:16px;background:#1f5aa7;color:#fff;font-weight:700;cursor:pointer;transition:background 0.2s;}
+.modal-actions button:hover{background:#2563c9;}
+.modal-actions button.secondary{background:rgba(255,255,255,0.14);color:#eef5ff;}
+.modal-actions button.secondary:hover{background:rgba(255,255,255,0.22);}
+.content-panel{width:100%;min-width:0;}
+.optional-field label{color:#999 !important;}
+.optional-field{opacity:0.75;}
+.master-details-panel{display:flex;flex-direction:column;gap:16px;padding:16px;background:rgba(255,255,255,0.04);border-radius:12px;margin:16px 0;}
+.detail-row{display:flex;flex-direction:column;gap:8px;}
+.detail-row label{font-weight:700;color:#20334f;font-size:0.95rem;}
+.detail-value{background:rgba(255,255,255,0.08);padding:12px 14px;border-radius:10px;color:#eef5ff;font-size:1rem;border-left:3px solid #1f5aa7;}
+.section-divider{height:1px;background:rgba(255,255,255,0.12);margin:12px 0;}
+.slaves-list-compact{display:grid;gap:8px;margin:12px 0 16px;}
+.slave-item-compact{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.06);padding:10px 14px;border-radius:10px;color:#eef5ff;font-size:0.95rem;}
+.slave-item-compact button{padding:6px 10px;font-size:0.85rem;background:rgba(255,255,255,0.1);border:none;border-radius:6px;color:#eef5ff;cursor:pointer;}
+.slave-item-compact button:hover{background:rgba(255,255,255,0.16);}
+</style>
+
+<script>
+let selectedMaster = null;
+let selectedSlave = null;
+let metadata = {files:{}};
+let currentMenuTarget = null;
+let currentMenuKind = null;
+const defaultCodeIcon = "{{ url_for('static', filename='images/py.png') }}";
+
+function normalizePath(path){
+    return path.replace(/\\/g, '/');
+}
+
+function closeMenu(){
+    const menu = document.getElementById('codeMenu');
+    if(menu){ menu.style.display='none'; }
+    currentMenuTarget = null;
+    currentMenuKind = null;
+}
+
+function showMenu(event, item, kind){
+    event.stopPropagation();
+    currentMenuTarget = item;
+    currentMenuKind = kind;
+    const menu = document.getElementById('codeMenu');
+    menu.style.display='block';
+    menu.style.left = event.pageX + 'px';
+    menu.style.top = event.pageY + 'px';
+}
+
+async function loadMeta(){
+    const r = await fetch('/code_manager/meta');
+    if(!r.ok) return {};
+    const j = await r.json();
+    metadata = j || {files:{}};
+}
+
+async function loadList(){
+    await loadMeta();
+    const r = await fetch('/code_manager/list');
+    const j = await r.json();
+    document.getElementById('master-count').textContent = j.masters.length;
+    document.getElementById('slave-count').textContent = j.slaves.length;
+    renderMasters(j.masters);
+    renderSlaves(j.slaves);
+}
+
+function renderMasters(masters){
+    const mastersEl = document.getElementById('masters');
+    mastersEl.innerHTML = '';
+    masters.forEach(m => {
+        const card = document.createElement('div');
+        card.className = 'code-card';
+        card.innerHTML = `
+            <img class="code-icon" src="${defaultCodeIcon}" alt="${m.name}">
+            <div class="code-name">${m.name}</div>
+        `;
+        card.onclick = () => selectMaster(m);
+
+        const menuBtn = document.createElement('button');
+        menuBtn.className = 'card-menu-trigger';
+        menuBtn.textContent = '⋯';
+        menuBtn.onclick = (e) => showMenu(e, m, 'master');
+        card.appendChild(menuBtn);
+        mastersEl.appendChild(card);
+    });
+}
+
+function renderSlaves(slaves){
+    const slavesSection = document.getElementById('slaves-section');
+    const slavesEl = document.getElementById('slaves');
+    if(!selectedMaster){
+        slavesSection.classList.add('hidden');
+        slavesEl.innerHTML = '';
+        return;
+    }
+
+    const visible = slaves.filter(s => {
+        const meta = metadata.files && metadata.files[normalizePath(s.path)] ? metadata.files[normalizePath(s.path)] : {};
+        return meta.master === selectedMaster.path;
+    });
+
+    document.getElementById('slaves-title').textContent = `${selectedMaster.name} - SLAVES CODES`;
+    document.getElementById('selected-master-pill').style.display = 'inline-flex';
+    document.getElementById('selected-master-name').textContent = selectedMaster.name;
+    slavesEl.innerHTML = '';
+
+    if(visible.length === 0){
+        const empty = document.createElement('div');
+        empty.className = 'status-pill';
+        empty.textContent = 'No slaves attached to this master yet.';
+        slavesEl.appendChild(empty);
+    }
+
+    visible.forEach(s => {
+        const card = document.createElement('div');
+        card.className = 'code-card';
+        card.innerHTML = `
+            <img class="code-icon" src="${defaultCodeIcon}" alt="${s.name}">
+            <div class="code-name">${s.name}</div>
+        `;
+        card.onclick = () => selectSlave(s);
+
+        const menuBtn = document.createElement('button');
+        menuBtn.className = 'card-menu-trigger';
+        menuBtn.textContent = '⋯';
+        menuBtn.onclick = (e) => showMenu(e, s, 'slave');
+        card.appendChild(menuBtn);
+        slavesEl.appendChild(card);
+    });
+
+    slavesSection.classList.remove('hidden');
+}
+
+function selectMaster(master){
+    selectedMaster = master;
+    selectedSlave = null;
+    openMasterDetailsModal(master);
+}
+
+function openMasterDetailsModal(master){
+    const meta = metadata.files && metadata.files[normalizePath(master.path)] ? metadata.files[normalizePath(master.path)] : {};
+    document.getElementById('detail-name').textContent = master.name;
+    document.getElementById('detail-objective').textContent = meta.objective || '(Not specified)';
+    
+    // Load slaves for this master
+    loadSlavesForMaster(master.path);
+    
+    document.getElementById('masterDetailsModal').dataset.masterPath = master.path;
+    document.getElementById('masterDetailsModal').classList.remove('hidden');
+}
+
+async function loadSlavesForMaster(masterPath){
+    const r = await fetch('/code_manager/list');
+    const j = await r.json();
+    const slavesList = document.getElementById('detail-slaves-list');
+    slavesList.innerHTML = '';
+    
+    const attachedSlaves = j.slaves.filter(s => {
+        const meta = metadata.files && metadata.files[normalizePath(s.path)] ? metadata.files[normalizePath(s.path)] : {};
+        return meta.master === masterPath;
+    });
+    
+    if(attachedSlaves.length === 0){
+        slavesList.innerHTML = '<div class="slave-item-compact" style="opacity:0.6;">No slave codes attached</div>';
+        return;
+    }
+    
+    attachedSlaves.forEach(s => {
+        const item = document.createElement('div');
+        item.className = 'slave-item-compact';
+        item.innerHTML = `
+            <span>${s.name}</span>
+            <button onclick="removeSlaveFromMaster('${s.path}', '${masterPath}')">Unlink</button>
+        `;
+        slavesList.appendChild(item);
+    });
+}
+
+async function removeSlaveFromMaster(slavePath, masterPath){
+    if(!confirm('Unlink this slave from the master?')) return;
+    const meta = metadata.files && metadata.files[normalizePath(slavePath)] ? metadata.files[normalizePath(slavePath)] : {};
+    delete meta.master;
+    const r = await fetch('/code_manager/update_meta', {
+        method:'POST',
+        headers:{'content-type':'application/json'},
+        body: JSON.stringify({path: slavePath, meta})
+    });
+    const j = await r.json();
+    if(j.ok){
+        await loadMeta();
+        await loadSlavesForMaster(masterPath);
+        alert('Slave unlinked successfully.');
+    } else {
+        alert('Failed to unlink: ' + (j.error || 'unknown'));
+    }
+}
+
+async function editMasterObjective(){
+    const masterPath = document.getElementById('masterDetailsModal').dataset.masterPath;
+    const currentMeta = metadata.files && metadata.files[normalizePath(masterPath)] ? metadata.files[normalizePath(masterPath)] : {};
+    
+    document.getElementById('edit-objective-input').value = currentMeta.objective || '';
+    document.getElementById('editObjectiveModal').dataset.masterPath = masterPath;
+    document.getElementById('editObjectiveModal').classList.remove('hidden');
+}
+
+async function saveMasterObjective(){
+    const masterPath = document.getElementById('editObjectiveModal').dataset.masterPath;
+    const newObjective = document.getElementById('edit-objective-input').value.trim();
+    
+    if(!masterPath) return;
+    
+    const currentMeta = metadata.files && metadata.files[normalizePath(masterPath)] ? metadata.files[normalizePath(masterPath)] : {};
+    currentMeta.objective = newObjective || 'Unnamed objective';
+    
+    const r = await fetch('/code_manager/update_meta', {
+        method:'POST',
+        headers:{'content-type':'application/json'},
+        body: JSON.stringify({path: masterPath, meta: currentMeta})
+    });
+    const j = await r.json();
+    if(j.ok){
+        await loadMeta();
+        const masterName = masterPath.split('/').pop();
+        const master = {name: masterName, path: masterPath};
+        document.getElementById('editObjectiveModal').classList.add('hidden');
+        openMasterDetailsModal(master);
+        alert('Objective updated successfully.');
+    } else {
+        alert('Failed to update: ' + (j.error || 'unknown'));
+    }
+}
+
+function selectSlave(slave){
+    selectedSlave = slave;
+    openContent(slave.path, true);
+}
+
+function showCodePanel(){
+    document.getElementById('code-view-section').classList.remove('hidden');
+    document.getElementById('code-view-panel').classList.remove('hidden');
+}
+
+function hideCodePanel(){
+    document.getElementById('code-view-section').classList.add('hidden');
+    document.getElementById('code-view-panel').classList.add('hidden');
+}
+
+async function openContent(path, showPanel = false){
+    closeMenu();
+    const r = await fetch('/code_manager/content?path=' + encodeURIComponent(path));
+    const j = await r.json();
+    if(!j.ok){
+        alert('Unable to load code: ' + (j.error || 'unknown'));
+        return;
+    }
+    const title = path.split('/').pop();
+    document.getElementById('code-body-title').textContent = title + ' - PYTHON CODE';
+    document.getElementById('code-body').textContent = j.content;
+    if(showPanel) showCodePanel();
+}
+
+
+async function aiSuggest(){
+    // Get the currently opened file path from contentModal dataset
+    const path = document.getElementById('contentModal').dataset.path;
+    if(!path){ alert('No file selected'); return; }
+    const r = await fetch('/agent/suggest', {
+        method: 'POST',
+        headers: {'content-type':'application/json'},
+        body: JSON.stringify({path})
+    });
+    const j = await r.json();
+    if(!j.ok){ alert('AI request failed: ' + (j.error || 'unknown')); return; }
+    showAISuggestions(j.suggestions, path);
+}
+
+function showAISuggestions(text, path){
+    // Create or update AI modal
+    let modal = document.getElementById('aiModal');
+    if(!modal){
+        modal = document.createElement('div');
+        modal.id = 'aiModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <h4>AI Suggestions</h4>
+                <textarea id="aiSuggestions" rows="14">${text.replace(/</g, '&lt;')}</textarea>
+                <div class="modal-actions">
+                    <button id="ai-apply" class="primary">Apply suggestion</button>
+                    <button id="ai-close" class="secondary">Close</button>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+        document.getElementById('ai-close').onclick = () => modal.remove();
+        document.getElementById('ai-apply').onclick = async () => {
+            const newContent = document.getElementById('aiSuggestions').value;
+            const rr = await fetch('/agent/apply', {
+                method:'POST',
+                headers:{'content-type':'application/json'},
+                body: JSON.stringify({path, content: newContent})
+            });
+            const jj = await rr.json();
+            if(jj.ok){ alert('Applied. Backup: ' + (jj.backup || 'none')); modal.remove(); openContent(path, true); }
+            else alert('Apply failed: ' + (jj.error || 'unknown'));
+        };
+    } else {
+        document.getElementById('aiSuggestions').value = text;
+    }
+    document.getElementById('aiModal')?.classList.remove('hidden');
+}
+
+document.addEventListener('click', (event) => {
+    const menu = document.getElementById('codeMenu');
+    if(menu && !menu.contains(event.target) && !event.target.classList.contains('card-menu-trigger')){
+        closeMenu();
+    }
+    const addTypeMenu = document.getElementById('addTypeMenu');
+    if(addTypeMenu && !addTypeMenu.contains(event.target) && event.target.id !== 'btn-add'){
+        addTypeMenu.classList.add('hidden');
+    }
+});
+
+function openMeta(path){
+    closeMenu();
+    const meta = metadata.files && metadata.files[normalizePath(path)] ? metadata.files[normalizePath(path)] : {};
+    
+    // Check if this is a master or slave by checking the path
+    const isMaster = path.includes('masters/') || path.startsWith('masters');
+    
+    if(isMaster){
+        // For master, open the master details modal
+        const filename = path.split('/').pop();
+        const master = {name: filename, path: path};
+        openMasterDetailsModal(master);
+    } else {
+        // For slave, open the standard edit metadata modal
+        document.getElementById('meta-objective').value = meta.objective || '';
+        document.getElementById('meta-ip').value = meta.ip || '';
+        document.getElementById('meta-rack').value = meta.rack || 0;
+        document.getElementById('meta-slot').value = meta.slot || 0;
+        populateVariableRows('meta-vars-grid', meta.variables || []);
+        document.getElementById('editModal').dataset.path = path;
+        document.getElementById('editModal').classList.remove('hidden');
+    }
+}
+
+async function saveContent(){
+    const path = document.getElementById('contentModal').dataset.path;
+    const content = document.getElementById('contentEditor').value;
+    const r = await fetch('/code_manager/edit', {
+        method: 'POST',
+        headers: {'content-type': 'application/json'},
+        body: JSON.stringify({path, content})
+    });
+    const j = await r.json();
+    if(j.ok){
+        document.getElementById('contentModal').classList.add('hidden');
+        openContent(path, true);
+        alert('Code saved successfully.');
+    } else {
+        alert('Save failed: ' + (j.error || 'unknown'));
+    }
+}
+
+async function saveMeta(){
+    const path = document.getElementById('editModal').dataset.path;
+    const variables = gatherVariables('meta-vars-grid');
+    const meta = {
+        objective: document.getElementById('meta-objective').value || 'Unnamed objective',
+        ip: document.getElementById('meta-ip').value,
+        rack: parseInt(document.getElementById('meta-rack').value || '0', 10),
+        slot: parseInt(document.getElementById('meta-slot').value || '0', 10),
+        variables
+    };
+    const r = await fetch('/code_manager/update_meta', {
+        method:'POST',
+        headers:{'content-type':'application/json'},
+        body: JSON.stringify({path, meta})
+    });
+    const j = await r.json();
+    if(j.ok){
+        document.getElementById('editModal').classList.add('hidden');
+        await loadList();
+        alert('Metadata saved.');
+    } else {
+        alert('Save failed: ' + (j.error || 'unknown'));
+    }
+}
+
+async function deleteFile(path){
+    closeMenu();
+    if(!confirm('Delete ' + path + ' ?')) return;
+    const r = await fetch('/code_manager/delete', {
+        method:'POST',
+        headers:{'content-type':'application/json'},
+        body: JSON.stringify({path})
+    });
+    const j = await r.json();
+    if(j.ok){
+        await loadList();
+        alert('Deleted successfully.');
+    } else {
+        alert('Delete failed: ' + (j.error || 'unknown'));
+    }
+}
+
+async function copyFile(path){
+    closeMenu();
+    const dst = prompt('Copy to (relative path):', path.replace(/[^/]+$/, 'copy_$&'));
+    if(!dst) return;
+    const r = await fetch('/code_manager/copy', {
+        method:'POST',
+        headers:{'content-type':'application/json'},
+        body: JSON.stringify({src: path, dst})
+    });
+    const j = await r.json();
+    if(j.ok){ await loadList(); alert('Copied successfully.'); }
+    else alert('Copy failed: ' + (j.error || 'unknown'));
+}
+
+async function moveFile(path){
+    closeMenu();
+    const dst = prompt('Move to (relative path):', path);
+    if(!dst) return;
+    const r = await fetch('/code_manager/move', {
+        method:'POST',
+        headers:{'content-type':'application/json'},
+        body: JSON.stringify({src: path, dst})
+    });
+    const j = await r.json();
+    if(j.ok){ await loadList(); alert('Moved successfully.'); }
+    else alert('Move failed: ' + (j.error || 'unknown'));
+}
+
+function closeAddTypeMenu(){
+    document.getElementById('addTypeMenu').classList.add('hidden');
+}
+
+function populateMasterOptions(){
+    const sel = document.getElementById('add-master-select');
+    sel.innerHTML = '';
+    fetch('/code_manager/list').then(r => r.json()).then(j => {
+        j.masters.forEach(m => {
+            const o = document.createElement('option');
+            o.value = m.path;
+            o.textContent = m.name;
+            sel.appendChild(o);
+        });
+    });
+}
+
+function getTypeSize(type){
+    const sizes = {bool:1, byte:1, int:2, word:2, dword:4, real:4};
+    return sizes[type] || 1;
+}
+
+function clearVariableGrid(container){
+    container.innerHTML = `
+        <div class="variable-row variable-row-header">
+            <span>Name</span>
+            <span>Type</span>
+            <span>Offset</span>
+            <span></span>
+        </div>`;
+}
+
+function createVariableRow(container, variable = {}){
+    const row = document.createElement('div');
+    row.className = 'variable-row';
+
+    const name = document.createElement('input');
+    name.type = 'text';
+    name.className = 'variable-name';
+    name.placeholder = 'variable_name';
+    name.value = variable.name || '';
+
+    const type = document.createElement('select');
+    type.className = 'variable-type';
+    ['bool','byte','int','word','dword','real'].forEach(v => {
+        const o = document.createElement('option');
+        o.value = v;
+        o.textContent = v.toUpperCase();
+        if(variable.type === v) o.selected = true;
+        type.appendChild(o);
+    });
+
+    const offset = document.createElement('input');
+    offset.type = 'number';
+    offset.className = 'variable-offset';
+    offset.value = (typeof variable.offset !== 'undefined' && variable.offset !== null ? variable.offset : '');
+    offset.min = 0;
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.textContent = 'Remove';
+    remove.onclick = () => row.remove();
+
+    type.onchange = () => {
+        if(!offset.value){
+            offset.value = nextVariableOffset(container);
+        }
+    };
+
+    row.appendChild(name);
+    row.appendChild(type);
+    row.appendChild(offset);
+    row.appendChild(remove);
+    container.appendChild(row);
+}
+
+function nextVariableOffset(container){
+    let maxOffset = 0;
+    container.querySelectorAll('.variable-row:not(.variable-row-header)').forEach(r => {
+        const type = r.querySelector('.variable-type');
+        const off = parseInt(r.querySelector('.variable-offset').value, 10);
+        if(!isNaN(off)){
+            const size = getTypeSize(type.value);
+            maxOffset = Math.max(maxOffset, off + size);
+        }
+    });
+    return maxOffset;
+}
+
+function populateVariableRows(containerId, variables){
+    const container = document.getElementById(containerId);
+    clearVariableGrid(container);
+    if(!variables || variables.length === 0){
+        createVariableRow(container, {name:'', type:'bool', offset:0});
+        return;
+    }
+    variables.forEach(v => createVariableRow(container, v));
+}
+
+function gatherVariables(containerId){
+    const container = document.getElementById(containerId);
+    const variables = [];
+    container.querySelectorAll('.variable-row:not(.variable-row-header)').forEach(r => {
+        const name = r.querySelector('.variable-name').value.trim();
+        const type = r.querySelector('.variable-type').value;
+        const offset = parseInt(r.querySelector('.variable-offset').value, 10);
+        if(!name) return;
+        variables.push({name, type, offset: isNaN(offset) ? 0 : offset});
+    });
+    return variables;
+}
+
+function defaultMasterContent(){
+    return `import snap7
+from snap7.util import *
+
+PLC_IP = '192.168.0.1'
+RACK = 0
+SLOT = 1
+
+client = snap7.client.Client()
+client.connect(PLC_IP, RACK, SLOT)
+
+DB_NUMBER = 1
+START = 0
+SIZE = 16
+
+result = client.db_read(DB_NUMBER, START, SIZE)
+
+# Example: read a DWORD from DB1.DB0
+value = get_dword(result, 0)
+print('Read value:', value)
+
+# Write a DWORD back
+set_dword(result, 0, 12345)
+client.db_write(DB_NUMBER, START, result)
+
+client.disconnect()
+`;
+}
+
+function defaultSlaveContent(){
+    return `# Slave code template
+# Variables are configured per instance using metadata.
+# This template is reused by all slave files.
+
+import snap7
+from snap7.util import *
+
+PLC_IP = '<SLAVE_IP>'
+RACK = 0
+SLOT = 1
+
+client = snap7.client.Client()
+client.connect(PLC_IP, RACK, SLOT)
+
+DB_NUMBER = 1
+START = 0
+SIZE = 64
+
+data = client.db_read(DB_NUMBER, START, SIZE)
+
+# Update variables by offset:
+# Example metadata variable structure:
+# [{"name":"sensor_value","type":"dword","offset":0},{"name":"motor_status","type":"int","offset":4}]
+
+client.disconnect()
+`;
+}
+
+function openAdd(){
+    console.log('openAdd triggered');
+    document.getElementById('addTypeMenu').classList.remove('hidden');
+}
+
+function openAddMaster(){
+    closeAddTypeMenu();
+    document.getElementById('add-kind').value = 'masters';
+    document.getElementById('add-modal-title').textContent = 'Create Master Code';
+    document.getElementById('add-name').value = 'peticion.py';
+    document.getElementById('add-objective').value = '';
+    document.getElementById('add-ip').value = '';
+    populateVariableRows('add-vars-grid', []);
+    document.getElementById('add-content').value = defaultMasterContent();
+    maybeToggleAddMaster();
+    populateMasterOptions();
+    document.getElementById('addModal').classList.remove('hidden');
+}
+
+function openAddSlave(){
+    closeAddTypeMenu();
+    document.getElementById('add-kind').value = 'slaves';
+    document.getElementById('add-modal-title').textContent = 'Create Slave Code';
+    document.getElementById('add-name').value = 'slave_request.py';
+    document.getElementById('add-objective').value = '';
+    document.getElementById('add-ip').value = '';
+    populateVariableRows('add-vars-grid', [{name:'DB_Sation_In',type:'dword',offset:0},{name:'DB_Sation_Out',type:'dword',offset:4}]);
+    document.getElementById('add-content').value = defaultSlaveContent();
+    maybeToggleAddMaster();
+    populateMasterOptions();
+    document.getElementById('addModal').classList.remove('hidden');
+}
+
+async function saveAdd(){
+    const kind = document.getElementById('add-kind').value;
+    const name = document.getElementById('add-name').value.trim();
+    const objective = document.getElementById('add-objective').value.trim();
+    const master = document.getElementById('add-master-select').value;
+    const content = document.getElementById('add-content').value;
+    const variables = gatherVariables('add-vars-grid');
+    const meta = {
+        objective: objective || 'Unnamed objective',
+        ip: document.getElementById('add-ip').value,
+        rack: parseInt(document.getElementById('add-rack').value || '0', 10),
+        slot: parseInt(document.getElementById('add-slot').value || '0', 10),
+        variables
+    };
+    if(kind === 'slaves' && master) meta.master = master;
+    const r = await fetch('/code_manager/create', {
+        method:'POST',
+        headers:{'content-type':'application/json'},
+        body: JSON.stringify({kind, name, content, meta})
+    });
+    const j = await r.json();
+    if(j.ok){
+        document.getElementById('addModal').classList.add('hidden');
+        await loadList();
+        alert('Created successfully.');
+    } else {
+        alert('Create failed: ' + (j.error || 'unknown'));
+    }
+}
+
+function maybeToggleAddMaster(){
+    const row = document.getElementById('add-master-row');
+    row.classList.toggle('hidden', document.getElementById('add-kind').value !== 'slaves');
+}
+
+function globalBack(){
+    window.location.href = '{{ url_for('dashboard') }}';
+}
+
+function backToSlaves(){
+    selectedSlave = null;
+    hideCodePanel();
+}
+
+function handleMenuAction(action){
+    if(!currentMenuTarget) return;
+    const path = currentMenuTarget.path;
+    switch(action){
+        case 'edit': return openContent(path, true);
+        case 'meta': return openMeta(path);
+        case 'copy': return copyFile(path);
+        case 'move': return moveFile(path);
+        case 'delete': return deleteFile(path);
+    }
+}
+
+document.addEventListener('click', (event) => {
+    const menu = document.getElementById('codeMenu');
+    if(menu && !menu.contains(event.target) && !event.target.classList.contains('card-menu-trigger')){
+        closeMenu();
+    }
+    const addTypeMenu = document.getElementById('addTypeMenu');
+    if(addTypeMenu && !addTypeMenu.contains(event.target) && event.target.id !== 'btn-add'){
+        addTypeMenu.classList.add('hidden');
+    }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('code management loaded');
+    loadList();
+    document.getElementById('btn-add').onclick = openAdd;
+    document.getElementById('btn-ai-assist').onclick = aiSuggest;
+    document.getElementById('btn-clean').onclick = () => { if(confirm('Delete all master and slave files?')) alert('Clean operation not implemented yet.'); };
+    document.getElementById('btn-global-back').onclick = globalBack;
+    document.getElementById('btn-back-slaves').onclick = backToSlaves;
+    document.getElementById('add-cancel').onclick = () => document.getElementById('addModal').classList.add('hidden');
+    document.getElementById('add-save').onclick = saveAdd;
+    document.getElementById('add-kind').onchange = () => { maybeToggleAddMaster(); if(document.getElementById('add-vars-grid')) populateVariableRows('add-vars-grid', gatherVariables('add-vars-grid')); };
+    document.getElementById('add-master-btn').onclick = openAddMaster;
+    document.getElementById('add-slave-btn').onclick = openAddSlave;
+    document.getElementById('add-type-cancel').onclick = closeAddTypeMenu;
+    document.getElementById('add-variable-row-add').onclick = () => createVariableRow(document.getElementById('add-vars-grid'), {type:'bool', offset: nextVariableOffset(document.getElementById('add-vars-grid'))});
+    document.getElementById('meta-variable-row-add').onclick = () => createVariableRow(document.getElementById('meta-vars-grid'), {type:'bool', offset: nextVariableOffset(document.getElementById('meta-vars-grid'))});
+    document.getElementById('meta-cancel').onclick = () => document.getElementById('editModal').classList.add('hidden');
+    document.getElementById('meta-save').onclick = saveMeta;
+    document.getElementById('content-cancel').onclick = () => document.getElementById('contentModal').classList.add('hidden');
+    document.getElementById('content-save').onclick = saveContent;
+    document.getElementById('menu-edit').onclick = () => handleMenuAction('edit');
+    document.getElementById('menu-meta').onclick = () => handleMenuAction('meta');
+    document.getElementById('menu-copy').onclick = () => handleMenuAction('copy');
+    document.getElementById('menu-move').onclick = () => handleMenuAction('move');
+    document.getElementById('menu-delete').onclick = () => handleMenuAction('delete');
+    document.getElementById('detail-close').onclick = () => document.getElementById('masterDetailsModal').classList.add('hidden');
+    document.getElementById('detail-add-slave').onclick = () => {
+        document.getElementById('masterDetailsModal').classList.add('hidden');
+        openAddSlave();
+    };
+    document.getElementById('edit-objective-btn').onclick = editMasterObjective;
+    document.getElementById('edit-objective-save').onclick = saveMasterObjective;
+    document.getElementById('edit-objective-cancel').onclick = () => document.getElementById('editObjectiveModal').classList.add('hidden');
+    maybeToggleAddMaster();
+});
+</script>
+{% endblock %}

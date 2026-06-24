@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="app-shell">
+    <header class="app-topbar">
+        <div class="app-brand">
+            <img src="{{ url_for('static', filename='images/martinrea_gray.png') }}" alt="Martinrea logo">
+            <div class="app-brand-text">MARTINREA MODULES</div>
+        </div>
+        <div class="app-top-right">
+            <span class="datetime" id="current-datetime"></span>
+            <span class="location">Industrial Park Dinatech, 83297, Hermosillo, Sonora, Mexico.</span>
+        </div>
+    </header>
+
+    <div class="app-navbar">
+        <div class="app-title">TEST 2 - BASE CODES, CONNECTION AND LATENCY</div>
+        <div class="tab-list">
+            <a class="tab active" href="{{ url_for('dashboard') }}">Main Screen</a>
+            <a class="tab" href="{{ url_for('architecture') }}">Test Architecture</a>
+            <a class="tab" href="{{ url_for('code_management') }}">Code Management</a>
+            <a class="tab" href="#">History</a>
+            <a class="tab" href="#">Tables</a>
+        </div>
+    </div>
+
+    <div class="app-body">
+        <aside class="side-panel">
+            <div class="side-user-card">
+                <div class="side-avatar-wrap">
+                    <img class="side-avatar" src="{{ url_for('static', filename='images/unknown_user.png') }}" alt="{{ username }}">
+                </div>
+                <div class="side-user-title">{{ username }}</div>
+                <div class="side-description">{{ user_description }}</div>
+            </div>
+
+            <div class="side-block">
+                <div class="side-block-label">Record the Production Line:</div>
+                {% if username == 'Casimiro' %}
+                <form action="{{ url_for('start_simulation') }}" method="post">
+                    <button type="submit" class="side-button">START</button>
+                </form>
+                {% else %}
+                <button class="side-button" disabled title="Only the Raspberry Pi user can start the line">START</button>
+                {% endif %}
+            </div>
+
+            <div class="side-block">
+                <div class="side-block-label">Update the codes to GitHub</div>
+                <form action="{{ url_for('update_github') }}" method="post">
+                    <button type="submit" class="side-button">UPDATE</button>
+                </form>
+            </div>
+
+            <div class="side-actions">
+                <form action="{{ url_for('logout') }}" method="get">
+                    <button type="submit" class="side-button secondary">LOG OUT</button>
+                </form>
+                <form action="{{ url_for('exit_app') }}" method="post">
+                    <button type="submit" class="side-button secondary">EXIT</button>
+                </form>
+            </div>
+        </aside>
+
+        <main class="content-panel">
+            {% if action_message %}
+                <div class="action-message">{{ action_message }}</div>
+            {% endif %}
+            <section class="screen-header">
+                <span class="screen-tag">Main Screen</span>
+                <div class="screen-heading">MINILOOP (MN)</div>
+            </section>
+
+            <div class="status-row">
+                <div class="status-pill">
+                    Simulation: {{ 'Running by ' + runtime_state['last_started_by'] if runtime_state['simulation_running'] else 'Stopped' }}
+                </div>
+                <div class="status-pill">
+                    GitHub updates: {{ runtime_state['github_updates'] }}
+                </div>
+            </div>
+
+            <section class="diagram-card">
+                <div class="diagram-bar">MN line</div>
+                <div class="diagram-board">
+                    <img class="diagram-image" src="{{ url_for('static', filename='images/miniloop.png') }}" alt="MN line background">
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+{% endblock %}

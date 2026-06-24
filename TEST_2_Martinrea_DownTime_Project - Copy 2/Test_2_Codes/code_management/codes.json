@@ -1,0 +1,53 @@
+{
+  "files": {
+    "masters/Main_code.py": {
+      "ip": "192.168.0.1",
+      "rack": 0,
+      "slot": 0,
+      "variables": [],
+      "objective": "Read and process main PLC data"
+    },
+    "slaves/slave_request.py": {
+      "ip": "192.168.0.1",
+      "rack": 0,
+      "slot": 0,
+      "variables": [
+        {
+          "name": "var1",
+          "offset": 0
+        },
+        {
+          "name": "var2",
+          "offset": 4
+        }
+      ],
+      "master": "masters/Main_code.py"
+    },
+    "masters/new_master.py": {
+      "objective": "Read temperature sensor data",
+      "ip": "",
+      "rack": 0,
+      "slot": 0,
+      "variables": []
+    },
+    "slaves/new_slave.py": {
+      "objective": "Write sensor data to database",
+      "ip": "",
+      "rack": 0,
+      "slot": 0,
+      "variables": [
+        {
+          "name": "DB_Sation_In",
+          "type": "dword",
+          "offset": 0
+        },
+        {
+          "name": "DB_Sation_Out",
+          "type": "dword",
+          "offset": 4
+        }
+      ],
+      "master": "masters/new_master.py"
+    }
+  }
+}
